@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import ProductFormModal from "@/components/ProductFormModal";
+import ConfirmModal from "@/components/ConfirmModal";
 import {
   getProducts,
   searchProducts,
   getCategories,
-} from "@/services/productService";
+} from "../../services/productService";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -21,6 +23,11 @@ export default function ProductsPage() {
   const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
   const currentLimit = [10, 20, 50].includes(limitParam) ? limitParam : 10;
   const skip = (currentPage - 1) * currentLimit;
+
+  // Modal States
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); // null for Add, object for Edit
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
@@ -64,13 +71,11 @@ export default function ProductsPage() {
       try {
         let data;
         if (searchParam) {
-          // Fetch search results
           data = await searchProducts(searchParam, {
             limit: currentLimit,
             skip,
           });
         } else if (categoryParam !== "all") {
-          // Fetch by category
           const res = await apiGetCategoryProducts(
             categoryParam,
             currentLimit,
@@ -78,21 +83,17 @@ export default function ProductsPage() {
           );
           data = res;
         } else {
-          // Standard pagination fetch
           data = await getProducts({ limit: currentLimit, skip });
         }
 
-        // Ignore outdated requests (Race condition fix for fast typing / delay)
         if (requestId !== latestRequestId.current) return;
 
         let items = data.products || [];
 
-        // Handle API limitation: if searching and category filter is also applied, filter client-side
         if (searchParam && categoryParam !== "all") {
           items = items.filter((p) => p.category === categoryParam);
         }
 
-        // Sorting logic
         if (sortParam !== "none") {
           items.sort((a, b) => {
             if (sortParam === "price-asc") return a.price - b.price;
@@ -120,7 +121,6 @@ export default function ProductsPage() {
     fetchFilteredData();
   }, [searchParam, categoryParam, sortParam, currentPage, currentLimit, skip]);
 
-  // Helper for category endpoint
   async function apiGetCategoryProducts(category, limit, skip) {
     const response = await fetch(
       `https://dummyjson.com/products/category/${category}?limit=${limit}&skip=${skip}`,
@@ -145,9 +145,20 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        Product Admin Dashboard
-      </h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Product Admin Dashboard
+        </h2>
+        <button
+          onClick={() => {
+            setSelectedProduct(null);
+            setIsFormOpen(true);
+          }}
+          className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          + Add Product
+        </button>
+      </div>
 
       {/* Controls: Search, Category Filter, Sort, Page Size */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-white p-4 rounded-lg shadow">
@@ -156,13 +167,13 @@ export default function ProductsPage() {
           placeholder="Search products..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="border rounded-md p-2 text-sm focus:outline-none focus:border-blue-500"
+          className="border rounded-md p-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500"
         />
 
         <select
           value={categoryParam}
           onChange={(e) => updateURL({ category: e.target.value, page: 1 })}
-          className="border rounded-md p-2 text-sm focus:outline-none focus:border-blue-500 capitalize"
+          className="border rounded-md p-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 capitalize"
         >
           <option value="all">All Categories</option>
           {categories.map((cat) => (
@@ -175,7 +186,7 @@ export default function ProductsPage() {
         <select
           value={sortParam}
           onChange={(e) => updateURL({ sort: e.target.value })}
-          className="border rounded-md p-2 text-sm focus:outline-none focus:border-blue-500"
+          className="border rounded-md p-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500"
         >
           <option value="none">Sort By</option>
           <option value="price-asc">Price: Low to High</option>
@@ -187,7 +198,7 @@ export default function ProductsPage() {
         <select
           value={currentLimit}
           onChange={(e) => updateURL({ limit: e.target.value, page: 1 })}
-          className="border rounded-md p-2 text-sm focus:outline-none focus:border-blue-500"
+          className="border rounded-md p-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500"
         >
           <option value="10">10 per page</option>
           <option value="20">20 per page</option>
@@ -227,6 +238,7 @@ export default function ProductsPage() {
                   <th className="p-3">Price</th>
                   <th className="p-3">Rating</th>
                   <th className="p-3">Stock</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,6 +263,23 @@ export default function ProductsPage() {
                     <td className="p-3 text-gray-900">${product.price}</td>
                     <td className="p-3 text-gray-600">⭐ {product.rating}</td>
                     <td className="p-3 text-gray-600">{product.stock}</td>
+                    <td className="p-3 space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setIsFormOpen(true);
+                        }}
+                        className="text-blue-600 hover:underline font-semibold"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setProductToDelete(product)}
+                        className="text-red-600 hover:underline font-semibold"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -262,30 +291,51 @@ export default function ProductsPage() {
             {products.map((product) => (
               <div
                 key={product.id}
-                className="bg-white p-4 rounded-lg shadow flex space-x-4"
+                className="bg-white p-4 rounded-lg shadow flex flex-col space-y-3"
               >
-                <img
-                  src={product.thumbnail}
-                  alt={product.title}
-                  className="w-20 h-20 object-cover rounded"
-                />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {product.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {product.category}
-                  </p>
-                  <div className="flex justify-between mt-2 text-sm">
-                    <span className="font-bold text-blue-600">
-                      ${product.price}
-                    </span>
-                    <span className="text-gray-600">
-                      Stock: {product.stock}
-                    </span>
+                <div className="flex space-x-4">
+                  <img
+                    src={product.thumbnail}
+                    alt={product.title}
+                    className="w-20 h-20 object-cover rounded"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">
+                      {product.title}
+                    </h3>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {product.category}
+                    </p>
+                    <div className="flex justify-between mt-2 text-sm">
+                      <span className="font-bold text-blue-600">
+                        ${product.price}
+                      </span>
+                      <span className="text-gray-600">
+                        Stock: {product.stock}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t text-sm">
+                  <span className="text-xs text-gray-500">
                     ⭐ {product.rating}
+                  </span>
+                  <div className="space-x-3">
+                    <button
+                      onClick={() => {
+                        setSelectedProduct(product);
+                        setIsFormOpen(true);
+                      }}
+                      className="text-blue-600 font-semibold"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setProductToDelete(product)}
+                      className="text-red-600 font-semibold"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               </div>
@@ -294,24 +344,24 @@ export default function ProductsPage() {
 
           {/* Pagination Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow gap-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm font-medium text-gray-900">
               Showing {startItem}-{endItem} of {total}
             </p>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => updateURL({ page: currentPage - 1 })}
                 disabled={currentPage <= 1}
-                className="rounded border px-3 py-1 text-sm disabled:opacity-50 hover:bg-gray-100"
+                className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Previous
               </button>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-semibold text-gray-900">
                 Page {currentPage} of {totalPages}
               </span>
               <button
                 onClick={() => updateURL({ page: currentPage + 1 })}
                 disabled={currentPage >= totalPages}
-                className="rounded border px-3 py-1 text-sm disabled:opacity-50 hover:bg-gray-100"
+                className="rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Next
               </button>
@@ -319,6 +369,46 @@ export default function ProductsPage() {
           </div>
         </>
       )}
+      {/* Modals for Add/Edit and Delete */}
+      <ProductFormModal
+        isOpen={isFormOpen}
+        product={selectedProduct}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={(formData) => {
+          if (selectedProduct) {
+            // EDIT mode: Update existing product in local state
+            setProducts(
+              products.map((p) =>
+                p.id === selectedProduct.id ? { ...p, ...formData } : p,
+              ),
+            );
+          } else {
+            // ADD mode: Include the actual stock and rating from the form
+            const newProduct = {
+              id: Date.now(),
+              ...formData,
+              thumbnail:
+                formData.thumbnail ||
+                "https://i.dummyjson.com/data/products/1/thumbnail.jpg",
+            };
+            setProducts([newProduct, ...products]);
+            setTotal((prev) => prev + 1);
+          }
+          setIsFormOpen(false);
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(productToDelete)}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${productToDelete?.title}"?`}
+        onConfirm={() => {
+          setProducts(products.filter((p) => p.id !== productToDelete.id));
+          setTotal((prev) => Math.max(0, prev - 1));
+          setProductToDelete(null);
+        }}
+        onClose={() => setProductToDelete(null)}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { getProductById } from "@/services/productService";
+import { getProductById } from "../../../services/productService";
 
 export default function ProductDetailPage({ params }) {
   const unwrappedParams = use(params);
