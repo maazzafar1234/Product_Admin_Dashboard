@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductFormModal from "@/components/ProductFormModal";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -10,6 +10,20 @@ import {
 } from "../../services/productService";
 
 export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen bg-gray-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
+  );
+}
+
+function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -26,7 +40,7 @@ export default function ProductsPage() {
 
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null); // null for Add, object for Edit
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
 
   const [products, setProducts] = useState([]);
@@ -144,7 +158,7 @@ export default function ProductsPage() {
   const endItem = Math.min(skip + currentLimit, total);
 
   return (
-    <div>
+    <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
           Product Admin Dashboard
@@ -369,6 +383,7 @@ export default function ProductsPage() {
           </div>
         </>
       )}
+
       {/* Modals for Add/Edit and Delete */}
       <ProductFormModal
         isOpen={isFormOpen}
@@ -376,14 +391,12 @@ export default function ProductsPage() {
         onClose={() => setIsFormOpen(false)}
         onSubmit={(formData) => {
           if (selectedProduct) {
-            // EDIT mode: Update existing product in local state
             setProducts(
               products.map((p) =>
                 p.id === selectedProduct.id ? { ...p, ...formData } : p,
               ),
             );
           } else {
-            // ADD mode: Include the actual stock and rating from the form
             const newProduct = {
               id: Date.now(),
               ...formData,
