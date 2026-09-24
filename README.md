@@ -21,6 +21,42 @@ Welcome! This is a modern, easy-to-use web application built to help manage and 
 
 ---
 
+## 📂 Project Structure
+
+product-admin-dashboard/
+├── src/
+│   ├── app/
+│   │   ├── login/                 # Authentication pages
+│   │   ├── products/              # Product management routes
+│   │   │   ├── [id]/              # Dynamic product detail route
+│   │   │   ├── layout.jsx         # Products layout wrapper
+│   │   │   ├── page.jsx           # Server Component wrapper (force-dynamic & Suspense)
+│   │   │   └── ProductsClient.jsx # Client Component dashboard with full interactive logic
+│   │   ├── favicon.ico
+│   │   ├── globals.css            # Tailwind CSS global styles
+│   │   ├── layout.js              # Root application layout
+│   │   └── page.js                # Root page redirect
+│   ├── components/                # Reusable UI components
+│   │   ├── ConfirmModal.jsx       # Modal for confirming product deletions
+│   │   ├── Pagination.jsx         # Page navigation component
+│   │   ├── ProductCardList.jsx    # Mobile view product cards grid
+│   │   ├── ProductFormModal.jsx   # Modal for adding and editing products
+│   │   └── ProductTable.jsx       # Desktop product table view
+│   └── services/                  # API service layer
+│       ├── api.js                 # Centralized Axios client setup
+│       ├── authService.js         # Authentication handling services
+│       └── productService.js      # Product CRUD operations and search
+├── public/                        # Static assets and icons
+├── .gitignore
+├── eslint.config.mjs
+├── jsconfig.json
+├── next.config.mjs
+├── package.json                   # Project dependencies and scripts
+├── postcss.config.mjs             # PostCSS configuration for Tailwind
+└── README.md
+
+---
+
 ## 📂 Project Structure (Behind the Scenes)
 
 - **`src/services/api.js`**: Centralized connection setup that automatically handles security tokens and error checking for all requests.
@@ -44,10 +80,15 @@ Welcome! This is a modern, easy-to-use web application built to help manage and 
 
 Want to run this app on your computer? Just follow these simple steps:
 
-1. **Install dependencies:**
+1. **Clone the Repository:**
+
+git clone [https://github.com/maazzafar1234/product-admin-dashboard.git](https://github.com/maazzafar1234/product-admin-dashboard.git)
+cd product-admin-dashboard
+
+2. **Install dependencies:**
 
 npm install
 
-2.**run the development server:**
+3.**run the development server:**
 
 npm run dev
